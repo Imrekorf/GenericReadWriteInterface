@@ -17,3 +17,4 @@ project(GenericReadWriteInterface)
 include_directories(inc/)
 
 add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME}_test unit_tests.cpp)
