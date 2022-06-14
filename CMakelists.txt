@@ -16,5 +16,9 @@ project(GenericReadWriteInterface)
 
 include_directories(inc/)
 
+# static testing
+# set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "time -v")
+# set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "time -v")
+
 add_executable(${PROJECT_NAME} main.cpp)
 add_executable(${PROJECT_NAME}_test unit_tests.cpp)

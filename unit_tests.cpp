@@ -1,4 +1,4 @@
-#include "GRWI.hpp"
+#include "iFileIO.hpp"
 #include <iostream>
 
 // #define TESTING
@@ -21,60 +21,6 @@
 #define PTR_ARR_TEST
 #define CLASS_PTR_ARR_TEST
 #define STRUCT_PTR_ARR_TEST
-
-#include <fstream>
-
-class iFileIO : public iGIO {
-private:
-	std::string _filename;
-protected:
-	virtual int iRead(char* buffer, std::size_t length) override{
-		std::ifstream file(_filename, std::ifstream::in | std::ifstream::app);
-		if(!file.is_open())
-			throw std::runtime_error("failed to open file " + _filename);
-		file.read(buffer, length);
-		int n = file.gcount(); // check read success
-		if(!file)
-			n = -1;
-		file.close();
-		return n;
-	}
-
-	virtual int iWrite(const char* buffer, std::size_t length) const override{
-		std::ofstream file(_filename, std::ofstream::out | std::ofstream::app);
-		if(!file.is_open())
-			throw std::runtime_error("failed to open file " + _filename);
-		file.write(buffer, length);
-		int n = length;
-		if(file.fail() || file.bad()){ // check write success
-			std::cout << "failbit: " << file.fail() << " badbit: " << file.bad() << std::endl;
-			n = -1;
-		}
-		file.close();
-		return n;
-	}
-
-	virtual inline const char* iName() const override{
-		return "FileIO";
-	}
-public:
-	iFileIO(std::string filename) : _filename(filename) {
-		std::ofstream file(_filename, std::ofstream::out);
-		if(!file.is_open())
-			throw std::runtime_error("failed to open file " + _filename);
-		file << "" << std::flush;
-		file.close();
-	}
-	virtual ~iFileIO(){}
-
-	void cleanFile() {
-		std::ofstream file(_filename, std::ofstream::out);
-		if(!file.is_open())
-			throw std::runtime_error("failed to open file " + _filename);
-		file << "" << std::flush;
-		file.close();
-	}
-};
 
 struct test {
 	int a = 3;

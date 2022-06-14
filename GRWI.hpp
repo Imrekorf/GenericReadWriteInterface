@@ -33,6 +33,7 @@ public:
 	public:
 		explicit IOfailure(const std::string& message) : _message(message){}
 		virtual ~IOfailure(){}
+		const char* what() const noexcept override {return _message.c_str();}
 	};
 protected:
 	/**
@@ -42,14 +43,14 @@ protected:
 	 * @param length The amount of bytes to read.
 	 * @return int The amount of bytes read.
 	 */
-	virtual int iRead(char* buffer, std::size_t length) = 0;
+	virtual int iRead(char* buffer, const std::size_t length) = 0;
 	/**
 	 * @brief Writes length amount of bytes. Returns -1 on error.
 	 * @param buffer The buffer containing the bytes to write
 	 * @param length the amount of bytes to write
 	 * @return int the amount of bytes written. 
 	 */
-	virtual int iWrite(const char* buffer, std::size_t length) const = 0;
+	virtual int iWrite(const char* buffer, const std::size_t length) = 0;
 
 	/**
 	 * @brief Returns the interface implementation name, e.g. I2C, SPI, UART, TCP
@@ -57,13 +58,13 @@ protected:
 	 */
 	virtual inline const char* iName() const = 0;
 private:
-	int _read(char* buffer, std::size_t length){
+	int _read(char* buffer, const std::size_t length){
 		int n = iRead(buffer, length); // if throwing will throw before generic IOfailure
 		if(n == -1)
 			throw IOfailure(std::string("IOFailure reading: ") + iName());
 		return n;
 	}
-	int _write(const char* buffer, std::size_t length) const{
+	int _write(const char* buffer, const std::size_t length) {
 		int n = iWrite(buffer, length); // if throwing will throw before generic IOfailure
 		if(n == -1)
 			throw IOfailure(std::string("IOFailure writing: ") + iName());
@@ -89,6 +90,11 @@ private:
 	template<class T> using has_end_iterator = decltype(has_end_iterator_test(std::declval<T>()));
 
 	template<typename T> using is_container = std::integral_constant<bool, has_const_iterator<T>::value && has_begin_iterator<T>::value && has_end_iterator<T>::value>;
+	
+	template <class T, class = void>
+	struct is_iterator : std::false_type { };
+	template <class T>
+	struct is_iterator<T, typename std::enable_if<!std::is_same<typename std::iterator_traits<T>::iterator_category, void>::value, void>::type> : std::true_type { };
 	// ----------------------------------------------------------------
 
 	
@@ -100,11 +106,13 @@ public:
 	 * @brief Reads an array from the interface into the specified buffer.
 	 * @tparam T the type of the array
 	 * @tparam size the size of the array
-	 * @return int the amount of T objects read
+	 * @return std::size_t the amount of T objects read
 	 */
-	template<typename T, std::size_t size> typename std::enable_if<!is_ioable<T>::value, int>::type
+	template<typename T, std::size_t size> typename std::enable_if<
+		!is_ioable<T>::value && !is_container<T>::value, std::size_t>::type
 		read(T(&buffer)[size]) { return _read((char*)buffer, size * sizeof(T)) / sizeof(T); }
-	template<typename T, std::size_t size> typename std::enable_if<is_ioable<T>::value, int>::type
+	template<typename T, std::size_t size> typename std::enable_if<
+		 is_ioable<T>::value, std::size_t>::type
 		read(T(&buffer)[size]) {
 			// create buffer, and read into it
 			auto data = std::make_unique<char[]>(size * ((iIOable&)buffer[0]).ObjectByteSize());
@@ -122,11 +130,13 @@ public:
 	 * @tparam T The pointer type
 	 * @param buffer the pointer buffer
 	 * @param length the amount of objects in the pointer (array)
-	 * @return int the amount of T objects written
+	 * @return std::size_t the amount of T objects written
 	 */
-	template<typename T> typename std::enable_if<!is_ioable<typename std::remove_pointer<T>::type>::value && std::is_pointer<T>::value, int>::type
+	template<typename T> typename std::enable_if<
+		!is_ioable<typename std::remove_pointer<T>::type>::value && std::is_pointer<T>::value && !is_container<T>::value && !is_iterator<T>::value, std::size_t>::type
 		read(T buffer, const std::size_t length) { return _read((char*)buffer, length * sizeof(typename std::remove_pointer<T>::type)) / sizeof(typename std::remove_pointer<T>::type); }
-	template<typename T> typename std::enable_if<is_ioable<typename std::remove_pointer<T>::type>::value && std::is_pointer<T>::value, int>::type
+	template<typename T> typename std::enable_if<
+		 is_ioable<typename std::remove_pointer<T>::type>::value && std::is_pointer<T>::value, std::size_t>::type
 		read(T buffer, const std::size_t length) {
 			// create buffer, and read into it
 			auto data = std::make_unique<char[]>(length * ((iIOable&)buffer[0]).ObjectByteSize());
@@ -143,38 +153,59 @@ public:
 	 * @brief Reads an lvalue from the interface
 	 * @tparam T The type of the lvalue
 	 * @param buffer the lvalue
-	 * @return int the amount of lvalue written
+	 * @return std::size_t the amount of lvalue written
 	 */
-	template<typename T> typename std::enable_if<!is_ioable<T>::value && !std::is_pointer<T>::value, int>::type 
+	template<typename T> typename std::enable_if<
+		!is_ioable<T>::value && !std::is_pointer<T>::value && !is_container<T>::value && !is_iterator<T>::value, std::size_t>::type 
 		read(T& buffer) { return _read((char*)&buffer, sizeof(T)) / sizeof(T); }
-	template<typename T> typename std::enable_if<is_ioable<T>::value && !std::is_pointer<T>::value, int>::type 
+	template<typename T> typename std::enable_if<
+		 is_ioable<T>::value && !std::is_pointer<T>::value, std::size_t>::type 
 		read(T& buffer) {
 			auto data = std::make_unique<char[]>(((iIOable&)buffer).ObjectByteSize());
 			auto bytesread = _read(data.get(),   ((iIOable&)buffer).ObjectByteSize());
 			((iIOable&)buffer).toObject(std::move(data));
 			return bytesread / ((iIOable&)buffer).ObjectByteSize();
 		}
+
+	/**
+	 * @brief Reads from the interface into a container
+	 * @tparam InputIt The iterator type
+	 * @param first iterator pointing to the start of range
+	 * @param last  iterator pointing to the end of range
+	 * @return InputIt::iterator pointing to the last element send
+	 */
+	template<typename InputIt> constexpr typename std::enable_if<
+		!is_container<typename std::iterator_traits<InputIt>::value_type>::value && is_iterator<InputIt>::value, InputIt>::type
+		read(InputIt first, InputIt last) {
+			for(; first!=last; ++first)
+				read(*first);
+			return last;
+		}
 	
 	/**
 	 * @brief Writes an rvalue T to the interface
 	 * @tparam T The type of the rvalue
 	 * @param buffer the rvalue
-	 * @return int the amount of rvalue written
+	 * @return std::size_t the amount of rvalue written
 	 */
-	template<typename T> typename std::enable_if<!is_ioable<T>::value && !is_container<T>::value, int>::type
-		write(const T&& buffer) const { return _write((const char*)&buffer, sizeof(T)) / sizeof(T); }
-	template<typename T> typename std::enable_if< is_ioable<T>::value && !is_container<T>::value, int>::type
-		write(const T&& buffer) const { return _write(((iIOable&)buffer).toBytes().get(), ((iIOable&)buffer).ObjectByteSize()) / ((iIOable&)buffer).ObjectByteSize(); }
+	template<typename T> typename std::enable_if<
+		!is_ioable<T>::value && !is_container<T>::value, std::size_t>::type
+		write(const T&& buffer) { return _write((const char*)&buffer, sizeof(T)) / sizeof(T); }
+	template<typename T> typename std::enable_if< 
+		 is_ioable<T>::value, std::size_t>::type
+		write(const T&& buffer) { return _write(((iIOable&)buffer).toBytes().get(), ((iIOable&)buffer).ObjectByteSize()) / ((iIOable&)buffer).ObjectByteSize(); }
 	/**
 	 * @brief Writes an array to the interface.
 	 * @tparam T The type of the array
 	 * @tparam size the size of the array
-	 * @return int the amount of T objects written
+	 * @return std::size_t the amount of T objects written
 	 */
-	template<typename T, std::size_t size> typename std::enable_if<!is_ioable<T>::value && !is_container<T>::value, int>::type
-		write(const T(&buffer)[size]) const { return _write((const char*)buffer, size * sizeof(T)) / sizeof(T); }
-	template<typename T, std::size_t size> typename std::enable_if< is_ioable<T>::value && !is_container<T>::value, int>::type
-		write(const T(&buffer)[size]) const {
+	template<typename T, std::size_t size> typename std::enable_if<
+		!is_ioable<T>::value && !is_container<T>::value && !is_iterator<T>::value, std::size_t>::type
+		write(const T(&buffer)[size]) { return _write((const char*)buffer, size * sizeof(T)) / sizeof(T); }
+	template<typename T, std::size_t size> typename std::enable_if< 
+		 is_ioable<T>::value, std::size_t>::type
+		write(const T(&buffer)[size]) {
 			auto data = std::make_unique<char[]>(size * ((iIOable&)buffer[0]).ObjectByteSize());
 			// copy pointer buffer into byte buffer
 			for(std::size_t i = 0; i < size; i++)
@@ -188,12 +219,14 @@ public:
 	 * @tparam T The pointer type
 	 * @param buffer the pointer buffer
 	 * @param length the amount of objects in the pointer (array)
-	 * @return int the amount of T objects written
+	 * @return std::size_t the amount of T objects written
 	 */
-	template<typename T> typename std::enable_if<!is_ioable<typename std::remove_pointer<T>::type>::value && std::is_pointer<T>::value && !is_container<T>::value, int>::type
-		write(const T  buffer, const std::size_t&& length) const { return _write((const char*)buffer, length * sizeof(typename std::remove_pointer<T>::type)) / sizeof(typename std::remove_pointer<T>::type); }
-	template<typename T> typename std::enable_if< is_ioable<typename std::remove_pointer<T>::type>::value && std::is_pointer<T>::value && !is_container<T>::value, int>::type
-		write(const T  buffer, const std::size_t&& length) const {
+	template<typename T> typename std::enable_if<
+		!is_ioable<typename std::remove_pointer<T>::type>::value && std::is_pointer<T>::value && !is_container<T>::value && !is_iterator<T>::value, std::size_t>::type
+		write(const T  buffer, const std::size_t&& length) { return _write((const char*)buffer, length * sizeof(typename std::remove_pointer<T>::type)) / sizeof(typename std::remove_pointer<T>::type); }
+	template<typename T> typename std::enable_if< 
+		 is_ioable<typename std::remove_pointer<T>::type>::value && std::is_pointer<T>::value, std::size_t>::type
+		write(const T  buffer, const std::size_t&& length) {
 			auto data = std::make_unique<char[]>(length * ((iIOable&)buffer[0]).ObjectByteSize());
 			// copy pointer buffer into byte buffer
 			for(std::size_t i = 0; i < length; i++)
@@ -206,15 +239,16 @@ public:
 	 * @brief Writes an lvalue to the interface
 	 * @tparam T The type of the lvalue
 	 * @param buffer the lvalue
-	 * @return int the amount of lvalue written
+	 * @return std::size_t the amount of lvalue written
 	 */
-	template<typename T> typename std::enable_if<!is_ioable<T>::value && !std::is_pointer<T>::value && !is_container<T>::value, int>::type 
-		write(const T&  buffer) const { return _write((const char*)&buffer, sizeof(T)) / sizeof(T); }
-	template<typename T> typename std::enable_if< is_ioable<T>::value && !std::is_pointer<T>::value && !is_container<T>::value, int>::type 
-		write(const T&  buffer) const { return _write(((iIOable&)buffer).toBytes().get(), ((iIOable&)buffer).ObjectByteSize()) / ((iIOable&)buffer).ObjectByteSize(); }
+	template<typename T> typename std::enable_if<
+		!is_ioable<T>::value && !std::is_pointer<T>::value && !is_container<T>::value && !is_iterator<T>::value, std::size_t>::type 
+		write(const T&  buffer) { return _write((const char*)&buffer, sizeof(T)) / sizeof(T); }
+	template<typename T> typename std::enable_if< 
+		 is_ioable<T>::value && !std::is_pointer<T>::value, std::size_t>::type 
+		write(const T&  buffer) { 
+			return _write(((iIOable&)buffer).toBytes().get(), ((iIOable&)buffer).ObjectByteSize()) / ((iIOable&)buffer).ObjectByteSize(); }
 
-
-	
 	/**
 	 * @brief Writes a container to the interface, executing a predicate for every element
 	 * @tparam InputIt The iterator type
@@ -224,8 +258,9 @@ public:
 	 * @param p the predicate function to call for every element in the container before sending it. Should return the a value and accept an element of container element type
 	 * @return InputIt::iterator pointing to the last element send
 	 */
-	template<typename InputIt, class Predicate> constexpr typename std::enable_if<!is_container<typename std::iterator_traits<InputIt>::value_type>::value, InputIt>::type
-		write(InputIt first, InputIt last, Predicate p){
+	template<typename InputIt, class Predicate> constexpr typename std::enable_if<
+		!is_container<typename std::iterator_traits<InputIt>::value_type>::value && is_iterator<InputIt>::value, InputIt>::type
+		write(InputIt first, InputIt last, Predicate p) {
 			for(; first!=last; ++first)
 				write(p(*first));
 			return last;
@@ -237,8 +272,9 @@ public:
 	 * @param last  iterator pointing to the end of range
 	 * @return InputIt::iterator pointing to the last element send
 	 */
-	template<typename InputIt> constexpr typename std::enable_if<!is_container<typename std::iterator_traits<InputIt>::value_type>::value, InputIt>::type
-		write(InputIt first, InputIt last){
+	template<typename InputIt> constexpr typename std::enable_if<
+		!is_container<typename std::iterator_traits<InputIt>::value_type>::value && is_iterator<InputIt>::value, InputIt>::type
+		write(InputIt first, InputIt last) {
 			for(; first!=last; ++first)
 				write(*first);
 			return last;
@@ -250,12 +286,36 @@ public:
 	 * @param last  iterator pointing to the end of range
 	 * @return InputIt::iterator pointing to the last element send
 	 */
-	template<typename InputIt> constexpr typename std::enable_if<is_container<typename std::iterator_traits<InputIt>::value_type>::value, InputIt>::type
-		write(InputIt first, InputIt last){
+	template<typename InputIt> constexpr typename std::enable_if<is_container<
+		typename std::iterator_traits<InputIt>::value_type>::value && is_iterator<InputIt>::value, InputIt>::type
+		write(InputIt first, InputIt last) {
 			std::cout << "expanding container" << std::endl;
 			for(; first!=last; ++first)
 				write(first->begin(), first->end()); // no need to check output as it will throw on error
 			return last;
 		}
 
+	/**
+	 * @brief Writes a string rvalue to the interface
+	 * @tparam T Template to check if parameter is string
+	 * @param _string the string object
+	 * @return std::size_t the amount of characters in the string written
+	 */
+	template<typename T> typename std::enable_if<
+		std::is_same<T, std::string>::value, std::size_t>::type
+		write(const T&& _string) {
+		return write(_string.c_str(), _string.length());
+	}
+
+	/**
+	 * @brief Writes a string lvalue to the interface
+	 * @tparam T Template to check if parameter is string
+	 * @param _string the string object
+	 * @return std::size_t the amount of characters in the string written
+	 */
+	template<typename T> typename std::enable_if<
+		std::is_same<T, std::string>::value, std::size_t>::type
+		write(const T& _string) {
+		return (write(_string.c_str(), _string.length()) == _string.length());
+	}
 };
