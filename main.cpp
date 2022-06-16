@@ -10,6 +10,15 @@
 // #include <list>
 // #include <forward_list>
 #include <algorithm>
+#include <sstream>
+
+class custom {
+
+	friend std::ostream& operator<<(std::ostream& os, const custom& dt){
+		os << "";
+		return os;
+	}
+};
 
 int main(){
 
@@ -60,13 +69,14 @@ int main(){
 	file.cleanFile();
 
 	file.write((std::string)"string");
-	std::string strbuff;
-	file.read(strbuff);
-	std::cout << strbuff << std::endl;
+	// std::stringstream strbuff;
+	file.read(std::cout);
+	// std::cout << strbuff.str() << std::endl;
 
 	// file.write(p);
 
 	// TODO: container reading
+	// TODO: operator << and >> overloading
 	// TODO: special pair overloading?
 
 	return 0;

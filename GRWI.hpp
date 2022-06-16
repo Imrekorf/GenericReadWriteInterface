@@ -92,6 +92,11 @@ private:
 	static std::false_type has_pushback_test(...);
 	template<class T> using has_pushback = decltype(has_pushback_test(std::declval<T>()));
 
+	template<typename T, typename IT, typename = decltype(std::declval<T&>() << std::declval<IT>())>
+	static std::true_type  can_accept_stream_test(const T&, const IT&);
+	static std::false_type can_accept_stream_test(...);
+	template<class T, class IT> using can_accept_stream = decltype(can_accept_stream_test(std::declval<T>(), std::declval<IT>()));
+
 	template<typename T> using is_container = std::integral_constant<bool, has_const_iterator<T>::value && has_begin_iterator<T>::value && has_end_iterator<T>::value>;
 	
 	// is_iterator only returns true for ::iterator types, not pointers
@@ -219,7 +224,7 @@ public:
 	 * @param buffer the lvalue
 	 * @return std::size_t the amount of lvalue written */
 	template<typename T> typename std::enable_if<
-		!std::is_pointer<T>::value && !is_container<T>::value && !is_iterator<T>::value, 
+		!std::is_pointer<T>::value && !is_container<T>::value && !is_iterator<T>::value && !std::is_base_of<std::ios_base, T>::value, 
 	std::size_t>::type 	read(T& buffer)		  { return _read((char*)&buffer, sizeof(T)) / sizeof(T); }
 	std::size_t			read(iIOable& buffer) {
 		auto data = std::make_unique<char[]>(buffer.ObjectByteSize());
@@ -315,6 +320,23 @@ public:
 		return last;
 	}
 
+
+	/** @brief Reads into an ostream until no data available or length is reached
+	 * @tparam OsT The OutputStream Type
+	 * @tparam IT The InputType
+	 * @param Container Stream to write to
+	 * @param maxlength maximum amount of IT type to read
+	 * @return std::size_t, the amount of bytes read */
+	template<typename IT = char, typename OsT> constexpr typename std::enable_if<
+		std::is_base_of<std::ios_base, OsT>::value && can_accept_stream<OsT, IT>::value, 
+	std::size_t>::type	read(OsT& stream, const std::size_t maxlength = 0) {
+		IT buffer;
+		std::size_t _maxlength = maxlength ? maxlength : std::numeric_limits<std::size_t>::max();
+		std::size_t i = 0;
+		while(read(buffer) && i < _maxlength)
+			stream << buffer, i++;
+		return i;
+	}
 
 	/** @brief Reads into a container until no data available or length is reached
 	 * @tparam CT The container type
