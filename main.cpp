@@ -78,6 +78,7 @@ int main(){
 	// TODO: container reading
 	// TODO: operator << and >> overloading
 	// TODO: special pair overloading?
+	// TODO: writing from stream input?
 
 	return 0;
 }
