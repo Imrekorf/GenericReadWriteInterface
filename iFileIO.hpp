@@ -2,6 +2,7 @@
 #include "GRWI.hpp"
 
 #include <fstream>
+#include <iostream>
 
 class iFileIO : public iGIO {
 private:
@@ -14,8 +15,10 @@ protected:
 		file.read(buffer, length);
 		int n = file.gcount(); // check read success
 		read_offset += n;
-		if(!file)
+		if(file.bad() || file.fail())
 			n = -1;
+		if(file.eof())
+			n = 0;
 		file.close();
 		return n;
 	}
@@ -46,6 +49,7 @@ public:
 	virtual ~iFileIO(){}
 
 	void cleanFile() {
+		read_offset = 0;
 		std::ofstream file(_filename, std::ios_base::out);
 		if(!file.is_open())
 			throw std::runtime_error("failed to open file " + _filename);

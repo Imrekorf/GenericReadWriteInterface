@@ -32,7 +32,9 @@ int main(){
 
 
 	try{
-	file.write(vec.begin(), vec.end());
+	file.write(vec.begin(), vec.end(), [](int i){
+		return i;
+	});
 	read_end = file.read(vec2.begin(), vec2.end());
 	} catch(const iGIO::IOfailure& e){
 		if(read_end != vec2.end())
@@ -42,6 +44,26 @@ int main(){
 	for(int i : vec2)
 		std::cout << i << " ";
 	std::cout << std::endl;
+
+	file.cleanFile();
+	vec2.clear();
+
+	file.write(vec.begin(), vec.end(), [](int i){
+		return i;
+	});
+	file.read(vec2, 5);
+	std::cout << "vec2: ";
+	for(int i : vec2)
+		std::cout << i << " ";
+	std::cout << std::endl;
+
+	file.cleanFile();
+
+	file.write((std::string)"string");
+	std::string strbuff;
+	file.read(strbuff);
+	std::cout << strbuff << std::endl;
+
 	// file.write(p);
 
 	// TODO: container reading
