@@ -12,13 +12,6 @@
 #include <algorithm>
 #include <sstream>
 
-class custom {
-
-	friend std::ostream& operator<<(std::ostream& os, const custom& dt){
-		os << "";
-		return os;
-	}
-};
 
 int main(){
 
@@ -32,9 +25,6 @@ int main(){
 		{3, 3},
 		{4, 4},
 		{5, 5}
-	};
-	std::pair<int, int> p = {
-		5, 5
 	};
 	// file.write(pure_array);
 	std::vector<int>::iterator read_end;
@@ -68,17 +58,32 @@ int main(){
 
 	file.cleanFile();
 
-	file.write((std::string)"string");
+	file.write(custom{5});
+
 	// std::stringstream strbuff;
-	file.read(std::cout);
+	// file.read<custom>(std::cout);
 	// std::cout << strbuff.str() << std::endl;
+	std::cout << std::endl;
+	
+	file.cleanFile();
+	std::vector<int> buffer;
+
+	file.write({"5 ", "6 ", "7 ", "8 "});
+	file.read<std::string>(buffer, [](std::string text){
+		return std::stoi(text);
+	});
+	std::cout << "buffer: ";
+	for(int i : buffer)
+		std::cout << i << " ";
+	std::cout << std::endl;
+
 
 	// file.write(p);
 
 	// TODO: container reading
 	// TODO: operator << and >> overloading
-	// TODO: special pair overloading?
 	// TODO: writing from stream input?
+	// TODO: terminator character reading variants
 
 	return 0;
 }

@@ -17,8 +17,8 @@ protected:
 		read_offset += n;
 		if(file.bad() || file.fail())
 			n = -1;
-		if(file.eof())
-			n = 0;
+		if(file.eof() || buffer[0] == ' ')
+			buffer[0] = '\0', n = 0;
 		file.close();
 		return n;
 	}
