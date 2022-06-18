@@ -9,33 +9,36 @@ private:
 	std::string _filename;
 	std::size_t read_offset = 0;
 protected:
-	virtual int iRead(char* buffer, const std::size_t length) override{
+	virtual std::size_t iRead(char* buffer, const std::size_t length) override{
 		std::ifstream file(_filename, std::ios_base::in);
 		file.seekg(read_offset, std::ios_base::beg);
 		file.read(buffer, length);
 		int n = file.gcount(); // check read success
 		read_offset += n;
-		if(file.bad() || file.fail())
-			n = -1;
-		if(file.eof() || buffer[0] == ' ')
+		if(file.eof())
 			buffer[0] = '\0', n = 0;
-		file.close();
-		return n;
-	}
-
-	virtual int iWrite(const char* buffer, const std::size_t length) override{
-		std::ofstream file(_filename, std::ios_base::out | std::ios_base::app);
-		file.write(buffer, length);
-		int n = length;
-		if(file.fail() || file.bad()){ // check write success
-			std::cout << "failbit: " << file.fail() << " badbit: " << file.bad() << std::endl;
-			n = -1;
+		else if(file.bad() || file.fail()){
+			file.close();
+			throw IOfailure(std::string("Error reading: ") + iName() + " file " + (file.bad() ? "bad" : "fail"));
 		}
 		file.close();
 		return n;
 	}
 
-	virtual inline const char* iName() const override{
+	virtual std::size_t iWrite(const char* buffer, const std::size_t length) override{
+		std::ofstream file(_filename, std::ios_base::out | std::ios_base::app);
+		file.write(buffer, length);
+		int n = length;
+		if(file.fail() || file.bad()){ // check write success
+			file.close();
+			throw IOfailure(std::string("Error reading: ") + iName() + " file " + (file.bad() ? "bad" : "fail"));
+		}
+		file.close();
+		return n;
+	}
+
+	// recommended extra method for distuingishing interface
+	virtual inline const char* iName() const {
 		return "FileIO";
 	}
 public:

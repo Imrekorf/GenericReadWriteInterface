@@ -14,22 +14,12 @@
 
 
 int main(){
-
 	iFileIO file("test.txt");
-	// std::array<int, 4> pure_array = {25, 50, 75, 100};
 	std::vector<int> vec = {25, 50, 75, 100};
 	std::vector<int> vec2(5, 0);
-	std::map<int, int> m = {
-		{1, 1},
-		{2, 2},
-		{3, 3},
-		{4, 4},
-		{5, 5}
-	};
-	// file.write(pure_array);
+
+
 	std::vector<int>::iterator read_end;
-
-
 	try{
 	file.write(vec.begin(), vec.end(), [](int i){
 		return i;
@@ -45,11 +35,13 @@ int main(){
 	std::cout << std::endl;
 
 	file.cleanFile();
-	vec2.clear();
+	std::cout << "finished predicate write test and vector range reading" << std::endl;
 
 	file.write(vec.begin(), vec.end(), [](int i){
 		return i;
 	});
+	std::cout << "write finished" << std::endl;
+	vec2.clear();
 	file.read(vec2, 5);
 	std::cout << "vec2: ";
 	for(int i : vec2)
@@ -57,17 +49,27 @@ int main(){
 	std::cout << std::endl;
 
 	file.cleanFile();
+	std::cout << "finished predicate write test and vector maxlength reading" << std::endl;
 
 	file.write(custom{5});
-
-	// std::stringstream strbuff;
-	// file.read<custom>(std::cout);
-	// std::cout << strbuff.str() << std::endl;
+	std::stringstream strbuff;
+	file.read<custom>(std::cout);
+	std::cout << strbuff.str() << std::endl;
 	std::cout << std::endl;
 	
 	file.cleanFile();
-	std::vector<int> buffer;
+	std::cout << "finished writing to cout stream" << std::endl;
 
+	std::string input_str = "hello world!";
+	std::string output_str;
+	file.write(input_str);
+	file.read(output_str);
+	std::cout << "read output_str: " << output_str << std::endl;
+	file.cleanFile();
+
+	std::cout << "finished string to r/w" << std::endl;
+
+	std::vector<int> buffer;
 	file.write({"5 ", "6 ", "7 ", "8 "});
 	file.read<std::string>(buffer, [](std::string text){
 		return std::stoi(text);
@@ -77,13 +79,18 @@ int main(){
 		std::cout << i << " ";
 	std::cout << std::endl;
 
+	std::cout << "finished array based predicate reading to r/w" << std::endl;
 
 	// file.write(p);
 
-	// TODO: container reading
-	// TODO: operator << and >> overloading
+	// DONE: string reading
+	//? DONE?: container reading
 	// TODO: writing from stream input?
-	// TODO: terminator character reading variants
+	// TODO: operator << and >> overloading
+	// TODO: terminator character reading variants, of new types
+	// TODO: terminator arrays? 
+	// TODO: delimiters? e.g. read string splitting? also implement for writing?
+	// TODO: input parsers???
 
 	return 0;
 }
