@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <sstream>
 
-
 int main(){
 	iFileIO file("test.txt");
 	std::vector<int> vec = {25, 50, 75, 100};
@@ -69,18 +68,22 @@ int main(){
 
 	std::cout << "finished string to r/w" << std::endl;
 
-	std::vector<int> buffer;
-	file.write({"5 ", "6 ", "7 ", "8 "});
-	file.read<std::string>(buffer, [](std::string text){
-		return std::stoi(text);
-	});
-	std::cout << "buffer: ";
-	for(int i : buffer)
-		std::cout << i << " ";
-	std::cout << std::endl;
+	// TODO: this
+	// std::vector<int> buffer;
+	int v[][2] = {{5}, {6}, {7}, {8}};
+	// file.write(v); // TODO
+	int v2[4] = {};
+	file.write(v2);
+	// file.read<std::string>(buffer, "\n", [](std::string text){
+	// 	return std::stoi(text);
+	// });
+	// std::cout << "buffer: ";
+	// for(int i : buffer)
+	// 	std::cout << i << " ";
+	// std::cout << std::endl;
 
-	std::cout << "finished array based predicate reading to r/w" << std::endl;
-	file.cleanFile();
+	// std::cout << "finished array based predicate reading to r/w" << std::endl;
+	// file.cleanFile();
 	
 	std::stringstream temp;
 	// std::ofstream os("temp.txt");
@@ -88,24 +91,36 @@ int main(){
 	// os << temp.str();
 	// os.close();
 	// std::ifstream is("temp.txt");
-	file.write(std::cin);
+	file.write(temp);
 	// is.close();
 
 	file.cleanFile();
 	std::cout << "Finished write from stream" << std::endl;
 
-	// read from file to object
-	// file >> object;
-	// object << file;
-	// write from object to file
-	// object >> file;
+	file << "hello world!" << std::endl;
+	std::cout << file;
+
+	file.cleanFile();
+
+
+
+	// for funsies
+	// file.write((std::u16string)u"Hello world! 😎");
+
+	// read from file to stream
+	// file >> stream;
+	// stream << file;
+	// write from stream to file
+	// stream >> file;
 
 	// file.write(p);
 
 	// DONE: string reading
 	//? DONE?: container reading
-	// TODO: operator << and >> overloading
-	// TODO: terminator character reading variants, of new types
+	//? DONE?: operator << and >> overloading
+	// TODO: N-Dimensional arrays
+	// TODO: initializer lists 
+
 	// TODO: terminator arrays? 
 	// TODO: delimiters? e.g. read string splitting? also implement for writing?
 	// TODO: input parsers???
