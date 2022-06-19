@@ -9,6 +9,7 @@
 #include <functional>
 #include <limits>
 #include <iostream>
+#include <sstream>
 
 class custom {
 public:
@@ -156,7 +157,13 @@ private:
 	template<typename T, typename IT, typename = decltype(std::declval<T&>() << std::declval<IT>())>
 	static std::true_type  can_accept_stream_test(const T&, const IT&);
 	static std::false_type can_accept_stream_test(...);
-	template<class T, class IT> using can_accept_stream = decltype(can_accept_stream_test(std::declval<T>(), std::declval<IT>()));
+	template<class T, class IT> using can_accept_stream = decltype(can_accept_stream_test(std::declval<T>(), std::declval<IT&>()));
+
+	template<typename T, typename IT, typename = decltype(std::declval<T&>() >> std::declval<IT&>())>
+	static std::true_type  can_extract_to_test(const T&, const IT&);
+	static std::false_type can_extract_to_test(...);
+	template<class T, class IT> using can_extract_to = decltype(can_extract_to_test(std::declval<T>(), std::declval<IT>()));
+
 
 	template<typename T> using is_container = std::integral_constant<bool, has_const_iterator<T>::value && has_begin_iterator<T>::value && has_end_iterator<T>::value>;
 	
@@ -332,7 +339,7 @@ public:
 	 * @param buffer The lvalue
 	 * @return std::size_t The amount of lvalue written */
 	template<typename T> typename std::enable_if<
-		!std::is_pointer<T>::value && !is_container<T>::value && !is_iterator<T>::value, 
+		!std::is_pointer<T>::value && !is_container<T>::value && !is_iterator<T>::value && !std::is_base_of<std::ios_base, T>::value, 
 	std::size_t>::type 	write(const T&  buffer) 	  { return _write((const char*)&buffer, sizeof(T)) / sizeof(T); }
 	std::size_t 		write(const iIOable&  buffer) { return _write(buffer.toBytes().get(), buffer.ObjectByteSize()) / buffer.ObjectByteSize(); }
 	/** @brief Reads an lvalue from the interface
@@ -535,12 +542,52 @@ private:
 		return i;
 	}
 
-	
+	// predicate should return 0 if no more bytes are available from T
+	template<typename BT, class predicate>
+	std::size_t write_from_T(predicate p, std::size_t size = 0){
+		size = size ? size : std::numeric_limits<std::size_t>::max();
+		std::size_t i = 0;
+		for(; i < size; i++){
+			BT buffer;
+			if(!(p(buffer) && write(buffer)))
+				break;
+		}
+		return i;
+	}
 public:
+	
+	/** @brief Writes from an istream until no data is available from the stream
+	 * Stream will be extracted into a buffer of type IT, by default std::string, 
+	 * until eof or a whitespace is encountered. If a whitespace is encountered 
+	 * The process will repeat until an eof is read.
+	 * EXAMPLE: The stringstream "Hello world!" will be extracted into two 
+	 * seperate buffers containing "Hello" and "world!", which will individually 
+	 * be sent over the interface.
+	 * @tparam IT The InputType
+	 * @tparam IsT The InputStream Type
+	 * @param stream The stream to write from
+	 * @return std::size_t The number of IT elements written */
+	template<typename IT = std::string, typename IsT> constexpr typename std::enable_if<
+		std::is_base_of<std::ios_base, IsT>::value && can_extract_to<IsT, IT>::value,
+	std::size_t>::type	write(IsT& stream) {
+		// boolean to keep track for if the stream is cin, and it has already been read
+		// Needed as otherwise reading will continue indefinitely
+		bool readcin = false;
+		auto opin = [&](IT& buffer){
+			if(stream.eof() || stream.fail() || readcin){ // check for end of stream
+				return 0;
+			}
+			stream >> buffer;
+			readcin = (&stream == &std::cin) ? true : false; // stream comparison is horrid
+			std::cout << "buffer: " << buffer << std::endl;
+			return 1;
+		};
+		return write_from_T<IT>(opin);
+	}
 
 	/** @brief Reads into an ostream until no data available or length is reached
-	 * @tparam OsT The OutputStream Type
 	 * @tparam IT The InputType
+	 * @tparam OsT The OutputStream Type
 	 * @param stream Stream to write to
 	 * @param maxlength Maximum amount of IT type to read
 	 * @return std::size_t The amount of bytes read */
@@ -653,7 +700,7 @@ public:
 	template<typename T> typename std::enable_if<
 		std::is_same<T, std::string>::value, 
 	std::size_t>::type	read(const T& _string, const CElemType<T>& terminator, std::size_t maxlength = 0) { 
-		auto StrPushLambda = [](CElemType<T>& _elem){_string.push_back(_elem);};
+		auto StrPushLambda = [&](CElemType<T>& _elem){_string.push_back(_elem);};
 		return read_into_T(StrPushLambda, terminator, maxlength);
 	}
 };

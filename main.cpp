@@ -80,12 +80,21 @@ int main(){
 	std::cout << std::endl;
 
 	std::cout << "finished array based predicate reading to r/w" << std::endl;
+	file.cleanFile();
+	
+	std::stringstream temp;
+	// std::ofstream os("temp.txt");
+	temp << "hello world!";
+	// os << temp.str();
+	// os.close();
+	// std::ifstream is("temp.txt");
+	file.write(std::cin);
+	// is.close();
 
 	// file.write(p);
 
 	// DONE: string reading
 	//? DONE?: container reading
-	// TODO: writing from stream input?
 	// TODO: operator << and >> overloading
 	// TODO: terminator character reading variants, of new types
 	// TODO: terminator arrays? 
