@@ -91,6 +91,15 @@ int main(){
 	file.write(std::cin);
 	// is.close();
 
+	file.cleanFile();
+	std::cout << "Finished write from stream" << std::endl;
+
+	// read from file to object
+	// file >> object;
+	// object << file;
+	// write from object to file
+	// object >> file;
+
 	// file.write(p);
 
 	// DONE: string reading

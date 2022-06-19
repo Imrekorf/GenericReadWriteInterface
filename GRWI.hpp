@@ -186,7 +186,7 @@ public:
 	/** @brief Writes an rvalue T to the interface
 	 * @tparam T The type of the rvalue
 	 * @param buffer The rvalue
-	 * @return std::size_t The amount of rvalue written */
+	 * @return std::size_t The amount of rvalue written, 1 or 0 */
 	template<typename T> typename std::enable_if<
 		!is_container<T>::value, 
 	std::size_t>::type	write(const T&& buffer)		  { return _write((const char*)&buffer, sizeof(T)) / sizeof(T); }
@@ -236,12 +236,12 @@ public:
 	 * @tparam T The buffer type
 	 * @param buffer The buffer to store into, preallocated
 	 * @param terminator The to search for terminator
-	 * @param maxlength The maximum amount of bytes to read
-	 * @return sts::size_t The amount of T read */
+	 * @param maxlength The maximum amount of T elements to read
+	 * @return sts::size_t The amount of T elements read */
 	template<typename T> typename std::enable_if<
 		std::is_pointer<T>::value && !is_container<T>::value && !is_container<remPtrType<T>>::value,
 	std::size_t>::type	read(T buffer, const remPtrType<T>& terminator, const std::size_t maxlength) {
-		return _read_term((char*)buffer, (char*)&terminator, sizeof(remPtrType<T>), maxlength);
+		return _read_term((char*)buffer, (char*)&terminator, sizeof(remPtrType<T>), maxlength * sizeof(remPtrType<T>));
 	}
 	template<typename T> typename std::enable_if<
 		!is_container<T>::value,
@@ -322,22 +322,22 @@ public:
 	/** @brief Reads until either array size is reached or terminator is reached
 	 * @tparam T The buffer type
 	 * @param buffer The buffer to store into, preallocated
-	 * @param terminator The to search for terminator
+	 * @param terminator The terminator to search for terminator
 	 * @return sts::size_t The amount of T read */
 	template<typename T, std::size_t size> typename std::enable_if<
 		!std::is_pointer<T>::value && !is_container<T>::value,
-	std::size_t>::type	read(T(&buffer)[size], const T& terminator) { return read(buffer, terminator, sizeof(T), size); }
+	std::size_t>::type	read(T(&buffer)[size], const T& terminator) { return read(buffer, terminator, sizeof(T), size * sizeof(T)); }
 	template<typename T, std::size_t size, typename TT> typename std::enable_if<
 		!std::is_pointer<T>::value && !is_container<T>::value,
-	std::size_t>::type	read(iIOable(&buffer)[size], TT& terminator) { return read(buffer, terminator, sizeof(TT), size); }
+	std::size_t>::type	read(iIOable(&buffer)[size], TT& terminator) { return read(buffer, terminator, sizeof(TT), size * sizeof(T)); }
 	template<typename T, std::size_t size>
-	std::size_t 		read(iIOable(&buffer)[size], iIOable& terminator) { return read(buffer, terminator, terminator.ObjectByteSize(), size);	}	
+	std::size_t 		read(iIOable(&buffer)[size], iIOable& terminator) { return read(buffer, terminator, terminator.ObjectByteSize(), size * sizeof(T));	}	
 
 
 	/** @brief Writes an lvalue to the interface
 	 * @tparam T The type of the lvalue
 	 * @param buffer The lvalue
-	 * @return std::size_t The amount of lvalue written */
+	 * @return std::size_t The amount of lvalue written, 1 or 0 */
 	template<typename T> typename std::enable_if<
 		!std::is_pointer<T>::value && !is_container<T>::value && !is_iterator<T>::value && !std::is_base_of<std::ios_base, T>::value, 
 	std::size_t>::type 	write(const T&  buffer) 	  { return _write((const char*)&buffer, sizeof(T)) / sizeof(T); }
@@ -345,7 +345,7 @@ public:
 	/** @brief Reads an lvalue from the interface
 	 * @tparam T The type of the lvalue
 	 * @param buffer The lvalue
-	 * @return std::size_t The amount of lvalue written */
+	 * @return std::size_t The amount of lvalue written, 1 or 0 */
 	template<typename T> typename std::enable_if<
 		!std::is_pointer<T>::value && !is_container<T>::value && !is_iterator<T>::value && !std::is_base_of<std::ios_base, T>::value, 
 	std::size_t>::type 	read(T& buffer)		  { return _read((char*)&buffer, sizeof(T)) / sizeof(T); }
@@ -549,7 +549,8 @@ private:
 		std::size_t i = 0;
 		for(; i < size; i++){
 			BT buffer;
-			if(!(p(buffer) && write(buffer)))
+			bool should_write = true;
+			if(!(p(buffer, should_write) && should_write, write(buffer)))
 				break;
 		}
 		return i;
@@ -573,24 +574,56 @@ public:
 		// boolean to keep track for if the stream is cin, and it has already been read
 		// Needed as otherwise reading will continue indefinitely
 		bool readcin = false;
-		auto opin = [&](IT& buffer){
+		auto opin = [&](IT& buffer, bool& should_write){
 			if(stream.eof() || stream.fail() || readcin){ // check for end of stream
 				return 0;
 			}
 			stream >> buffer;
 			readcin = (&stream == &std::cin) ? true : false; // stream comparison is horrid
-			std::cout << "buffer: " << buffer << std::endl;
+			should_write = true;
 			return 1;
 		};
 		return write_from_T<IT>(opin);
 	}
+	/** @brief Writes from an istream until no data is available from the stream
+	 * Stream will be extracted into a buffer of type IT, by default std::string, 
+	 * until eof or a whitespace is encountered. If a whitespace is encountered 
+	 * The process will repeat until an eof is read.
+	 * EXAMPLE: The stringstream "Hello world!" will be extracted into two 
+	 * seperate buffers containing "Hello" and "world!", which will individually 
+	 * be sent over the interface.
+	 * @tparam IT The InputType
+	 * @tparam IsT The InputStream Type
+	 * @param stream The stream to write from
+	 * @param predicate The predicate to execute for every element read from stream.
+	 * 					executed before writing, if predicate returns false element is not written.
+	 * 					Can also perform mutation on passed buffer.
+	 * @return std::size_t The number of IT elements written */
+	template<typename IT = std::string, typename IsT> constexpr typename std::enable_if<
+		std::is_base_of<std::ios_base, IsT>::value && can_extract_to<IsT, IT>::value,
+	std::size_t>::type	write(IsT& stream, std::function<bool(IT& buffer)> predicate) {
+		// boolean to keep track for if the stream is cin, and it has already been read
+		// Needed as otherwise reading will continue indefinitely
+		bool readcin = false;
+		auto opin = [&](IT& buffer, bool& should_write){
+			if(stream.eof() || stream.fail() || readcin){ // check for end of stream
+				return 0;
+			}
+			stream >> buffer;
+			should_write = predicate(buffer); // decide if we should write buffer
+			readcin = (&stream == &std::cin) ? true : false; // stream comparison is horrid
+			return 1;
+		};
+		return write_from_T<IT>(opin);
+	}
+
 
 	/** @brief Reads into an ostream until no data available or length is reached
 	 * @tparam IT The InputType
 	 * @tparam OsT The OutputStream Type
 	 * @param stream Stream to write to
 	 * @param maxlength Maximum amount of IT type to read
-	 * @return std::size_t The amount of bytes read */
+	 * @return std::size_t The amount of IT elements read */
 	template<typename IT = char, typename OsT> constexpr typename std::enable_if<
 		std::is_base_of<std::ios_base, OsT>::value && can_accept_stream<OsT, IT>::value, 
 	std::size_t>::type	read(OsT& stream, std::size_t maxlength = 0) {
@@ -598,12 +631,12 @@ public:
 		return read_into_T<IT>(opout, maxlength);
 	}
 	/** @brief Reads into an ostream until no data available, terminator is reached or maxlength is reached
-	 * @tparam OsT The OutputStream Type
 	 * @tparam IT The InputType
+	 * @tparam OsT The OutputStream Type
 	 * @param stream Stream to write to
 	 * @param terminator The terminator to search for
 	 * @param maxlength The maximum length to read
-	 * @return std::size_t The amount of bytes read */
+	 * @return std::size_t The amount of IT elements read */
 	template<typename IT = char, typename OsT> constexpr typename std::enable_if<
 		std::is_base_of<std::ios_base, OsT>::value && can_accept_stream<OsT, IT>::value, 
 	std::size_t>::type	read(OsT& stream, const IT& terminator, std::size_t maxlength = 0) {
@@ -611,12 +644,22 @@ public:
 		return read_into_T<IT>(opout, terminator, maxlength);
 	}
 	
+	
+	/** @brief Writes a container to the interface
+	 * @tparam InputIt The iterator type
+	 * @param Container The container to write
+	 * @return InputIt::iterator Iterator pointing to the last element send */
+	template<typename CT> constexpr typename std::enable_if<
+		is_container<CT>::value && !std::is_pointer<CElemType<CT>>::value, 
+	typename CT::iterator>::type write(CT& Container) {
+		return write(Container.begin(), Container.end());
+	}
 
 	/** @brief Reads into a container until no data available or length is reached
 	 * @tparam CT The container type
 	 * @param Container Container to read into
 	 * @param maxlength Maximum amount of CT's type to read
-	 * @return std::size_t The amount of bytes read */
+	 * @return std::size_t The amount of CT's type read */
 	template<typename CT> constexpr typename std::enable_if<
 		is_container<CT>::value && has_pushback<CT>::value, 
 	std::size_t>::type	read(CT& Container, std::size_t maxlength = 0) {
@@ -628,7 +671,7 @@ public:
 	 * @param Container Container to read into
 	 * @param terminator The terminator to search for
 	 * @param maxlength Maximum amount of CT's type to read
-	 * @return std::size_t The amount of bytes read */
+	 * @return std::size_t The amount of CT's type read */
 	template<typename CT> constexpr typename std::enable_if<
 		is_container<CT>::value && has_pushback<CT>::value, 
 	std::size_t>::type	read(CT& Container, CElemType<CT>& terminator, std::size_t maxlength = 0) {
@@ -642,7 +685,7 @@ public:
 	 * @param Container Container to read into
 	 * @param m	Mutator function, should accept buffer value type and return  aswell
 	 * @param maxlength Maximum amount of CT's type to read
-	 * @return std::size_t The amount of bytes read */
+	 * @return std::size_t The amount of BT elements read */
 	template<typename BT, typename CT> constexpr typename std::enable_if<
 		is_container<CT>::value && has_pushback<CT>::value, 
 	std::size_t>::type	read(CT& Container, std::function<CElemType<CT>(BT buf)> m, std::size_t maxlength = 0){
@@ -662,7 +705,7 @@ public:
 	 * @param terminator The terminator to search for
 	 * @param m	Mutator function, should accept buffer value type and return  aswell
 	 * @param maxlength Maximum amount of CT's type to read
-	 * @return std::size_t The amount of bytes read */
+	 * @return std::size_t The amount of BT elements read */
 	template<typename BT, typename CT> constexpr typename std::enable_if<
 		is_container<CT>::value && has_pushback<CT>::value, 
 	std::size_t>::type	read(CT& Container, BT terminator, std::function<CElemType<CT>(BT buf)> m, std::size_t maxlength = 0){
