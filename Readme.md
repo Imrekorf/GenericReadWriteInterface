@@ -149,11 +149,13 @@ std::size_t read (OsT& stream, const IT& terminator, std::size_t maxlength = 0);
 
 ### Operators
 ```c++
+/** SUPPORTS: any type supported by a write() function */
 iGIO& operator<<(Type&& _t);
+/** SUPPORTS: std::endl() and std::flush() */
 iGIO& operator<<(std::ostream&(*var)(std::ostream&)); // for std::endl
 
+/** SUPPORTS: any type supported by a read() function */
 iGIO& operator>>(Type& _t);
-
-
+/** SUPPORTS: any stream supported by a read() function */
 friend std::ostream& operator<<(std::ostream& os, iGIO& _igio);
 ```

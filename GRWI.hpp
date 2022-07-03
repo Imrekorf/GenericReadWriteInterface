@@ -715,7 +715,7 @@ public:
 	template<typename IT = std::string, typename OsT> constexpr typename std::enable_if<
 		std::is_base_of<std::ios_base, OsT>::value && can_accept_stream<OsT, IT>::value, 
 	std::size_t>::type	read(OsT& stream, std::size_t maxlength = 0) {
-		auto opout = [&](IT& buffer){stream << buffer;};
+		auto opout = [&](IT& buffer){stream << buffer; return stream.good();};
 		return read_into_T<IT>(opout, maxlength);
 	}
 	/** @brief Reads into an ostream until no data available, terminator is reached or maxlength is reached
@@ -729,12 +729,12 @@ public:
 	template<typename IT = std::string, typename OsT> constexpr typename std::enable_if<
 		std::is_base_of<std::ios_base, OsT>::value && can_accept_stream<OsT, IT>::value, 
 	std::size_t>::type	read(OsT& stream, const IT& terminator, std::size_t maxlength = 0) {
-		auto opout = [&](IT& buffer){stream << buffer;};
+		auto opout = [&](IT& buffer){stream << buffer; return stream.good();};
 		return read_into_T<IT>(opout, terminator, maxlength);
 	}
 	
 	
-	//? ======== Container R/W wrappers ========>>==========================================================================================
+	//? ======== Container Reference R/W wrappers ========>>==========================================================================================
 
 	/** @brief Writes a container to the interface
 	 * SUPPORTS: Any container except containers containing pointers
@@ -831,7 +831,7 @@ public:
 		is_container<CT>::value, 
 	std::size_t>::type	read(CT& Container, const CElemType<CT>& terminator, std::function<bool(CT& Container, CElemType<CT>& buffer)> insert, std::size_t maxlength = 0) {
 		auto insfunc = std::bind(insert, Container, std::placeholders::_1);
-		return read_into_T<CElemType<CT>>(pushback, terminator, maxlength);
+		return read_into_T<CElemType<CT>>(insfunc, terminator, maxlength);
 	}
 
 	//* push_back mutator based
@@ -967,7 +967,6 @@ public:
 		return read<CElemType<CT>>(Container, terminator, mutator, insert, maxlength);
 	}
 
-
 	//? ======== String R/W wrappers ========>>==========================================================================================
 	
 	/** @brief Writes a string rvalue to the interface, excluding ending 0
@@ -1015,27 +1014,25 @@ public:
 		write(_t);
 		return *this;
 	}
-	/** @brief Overloaded operator<< for iGIO stream manipulators like endl and flush
-	 * SUPPORTS: any type supported by a write() function
+
+	/** @brief Overloaded operator<< for stream manipulators like endl and flush
+	 * SUPPORTS: endl() and flush() stream manipulators
 	 * std::endl calls the custom endl() function, which by default writes the LineEnder (by default \\n) and flushing the interface through the custom flush() function
 	 * std::flush calls the custom flush() function, which by default does nothing
 	 * Only implemented for code readability and concistency
 	 * @param var a templated ostream io manipulator like std::endl
 	 * @return iGIO& Reference to the interface
 	 */
-	iGIO& operator<<(iGIO&(*manip)(iGIO&)){
-		return manip(*this);
-	}
-
 	iGIO& operator<<(std::ostream&(*manip)(std::ostream&)){
 		if(manip == &std::endl<char, std::char_traits<char>>)
 			return endl(*this);
 		if(manip == &std::flush<char, std::char_traits<char>>)
 			return flush(*this);
+		return *this;
 	}
 
 	/** @brief Read interface to stream
-	 * SUPPORTS:
+	 * SUPPORTS: any stream supported by a read() function
 	 * @param os the stream to read to
 	 * @param _igio the interface to read from
 	 * @return std::ostream& Reference to the stream
@@ -1046,7 +1043,7 @@ public:
 	}
 
 	/** @brief Reads a Type object from the interface
-	 * SUPPORTS:
+	 * SUPPORTS: any type supported by a read() function
 	 * @tparam Type The object type to read
 	 * @param _t The object to write into
 	 * @return iGIO& Reference to the interface
