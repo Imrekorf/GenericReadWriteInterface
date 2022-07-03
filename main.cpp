@@ -98,6 +98,10 @@ int main(){
 	std::cout << "Finished write from stream" << std::endl;
 
 	file << "hello world!" << std::endl;
+
+	const std::wstring wstring = L"yes!";
+	file << std::endl;
+
 	std::cout << file;
 
 	file.cleanFile();
