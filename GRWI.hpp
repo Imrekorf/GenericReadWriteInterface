@@ -118,8 +118,8 @@ protected:
 		std::size_t i = iRead(buffer, term_length);
 		for(std::size_t read_bytes = i, j = 0; read_bytes && i < _max_length; i+=read_bytes){
 			if(i >= term_length && term_length){ // we have enough data to check for a comparison
-				if(buffer[j] == terminator[j]){
-					if(j++ == term_length){
+				if(buffer[i-1] == terminator[j]){
+					if(j++ == term_length-1){
 						break;
 					}
 				}else
@@ -312,7 +312,7 @@ public:
 	std::size_t>::type	read_until(iIOable* buffer, const Type& terminator, const std::size_t maxlength) {
 		// create buffer, and read into it
 		auto data = std::make_unique<char[]>(maxlength * buffer[0].ObjectByteSize());
-		auto bytesread = _read_until(data.get(), &terminator, sizeof(terminator), maxlength * buffer[0].ObjectByteSize());
+		auto bytesread = _read_until(data.get(), (char*)&terminator, sizeof(terminator), maxlength * buffer[0].ObjectByteSize());
 		// copy buffered data into objects
 		for(std::size_t i = 0; i < maxlength; i++){
 			auto data_temp = std::make_unique<char[]>(buffer[0].ObjectByteSize());
@@ -320,7 +320,7 @@ public:
 			buffer[i].toObject(std::move(data_temp));
 		}
 		return bytesread / buffer[0].ObjectByteSize();
-	}	
+	}
 	std::size_t 		read_until(iIOable* buffer, const iIOable& terminator, const std::size_t maxlength) {
 		// create buffer, and read into it
 		auto data = std::make_unique<char[]>(maxlength * buffer[0].ObjectByteSize());

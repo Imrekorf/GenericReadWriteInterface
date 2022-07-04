@@ -715,6 +715,215 @@ void Stream_test(){
 	}
 }
 
+void Until_Pointer_arr_test(){
+	std::cout << "\n[Ptr Array until test]" << std::endl;
+	{
+	int test[4] = {10, 11, 12, 13};
+	int ret_test[4] = {0, 0, 0, 0};
+	file.write(test, 4);
+	file.read_until(ret_test, 12, 4);
+	std::string equal = std::equal(std::begin(test), std::end(test)-1, std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer array int: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+	{
+	double test[4] = {10.5, 11.5, 12.5, 13.5};
+	double ret_test[4] = {0, 0, 0, 0};
+	file.write(test, 4);
+	file.read_until(ret_test, 12.5, 4);
+	std::string equal = std::equal(std::begin(test), std::end(test)-1, std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer array double: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+	{
+	test_struct test[4] = {test_struct{25, 50, 75, 100}, test_struct{125, 150, 175, 200}, test_struct{225, 250, 275, 300}, test_struct{325, 350, 375, 400}};
+	test_struct ret_test[4] = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+	file.write(test, 4);
+	file.read_until(ret_test, test_struct{225, 250, 275, 300}, 4);
+	std::string equal = std::equal(std::begin(test), std::end(test)-1, std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer array test_struct: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+	{
+	test_iIOable test[4] = {test_iIOable(25, 50, 75, 100), test_iIOable(125, 150, 175, 200), test_iIOable(225, 250, 275, 300), test_iIOable(325, 350, 375, 400)};
+	test_iIOable ret_test[4] = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+	file.write(test, 4);
+	file.read_until(ret_test, test_iIOable(225, 250, 275, 300), 4);
+	std::string equal = std::equal(std::begin(test), std::end(test)-1, std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer array test_iIOable: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+}
+
+void Until_Array_test(){
+	std::cout << "\n[Array until test]" << std::endl;
+	{
+	int test[4] = {10, 11, 12, 13};
+	int ret_test[4] = {0, 0, 0, 0}; 
+	file.write(test);
+	file.read_until(ret_test, 12);
+	std::string equal = std::equal(std::begin(test), std::end(test)-1, std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "array int: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+	{
+	double test[4] = {10.5, 11.5, 12.5, 13.5};
+	double ret_test[4] = {0, 0, 0, 0};
+	file.write(test);
+	file.read_until(ret_test, 12.5);
+	std::string equal = std::equal(std::begin(test), std::end(test)-1, std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "array double: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+	{
+	test_struct test[4] = {test_struct{25, 50, 75, 100}, test_struct{125, 150, 175, 200}, test_struct{225, 250, 275, 300}, test_struct{325, 350, 375, 400}};
+	test_struct ret_test[4] = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+	file.write(test);
+	file.read_until(ret_test, test_struct{225, 250, 275, 300});
+	std::string equal = std::equal(std::begin(test), std::end(test)-1, std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "array test_struct: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+	{
+	test_iIOable test[4] = {test_iIOable(25, 50, 75, 100), test_iIOable(125, 150, 175, 200), test_iIOable(225, 250, 275, 300), test_iIOable(325, 350, 375, 400)};
+	test_iIOable ret_test[4] = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+	file.write(test);
+	file.read_until(ret_test, test_iIOable{225, 250, 275, 300});
+	std::string equal = std::equal(std::begin(test), std::end(test)-1, std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "array test_iIOable: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+}
+
+void Until_Range_test(){
+	std::cout << "\n[Range until test]" << std::endl;
+	{
+	std::vector<int> test = {10, 11, 12, 13};
+	std::vector<int> ret_test(4, 0);
+	
+	file.write(test.begin(), test.end());
+	file.read_until(ret_test.begin(), ret_test.end(), 12);
+	std::string equal = std::vector<int>{10, 11, 12, 0} == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "vector<int>: ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+	{
+	std::forward_list<int> test = {10, 11, 12, 13};
+	std::forward_list<int> ret_test(4, 0);
+	
+	file.write(test.begin(), test.end());
+	file.read_until(ret_test.begin(), ret_test.end(), 12);
+	std::string equal = std::forward_list<int>{10, 11, 12, 0} == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "forward_list<int>: ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+	{
+	std::vector<int> test = {10, 11, 12, 13};
+	std::vector<int> ret_test(2, 0);
+	
+	file.write(test.begin(), test.end());
+	file.read_until(ret_test.begin(), ret_test.end(), 12);
+	std::string equal = std::vector{10, 11} == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "vector<int>(2): ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+	{
+	std::vector<int> test = {10, 11, 12, 13};
+	std::vector<int> ret_test(5, 0);
+	
+	file.write(test.begin(), test.end());
+	file.read_until(ret_test.begin(), ret_test.end(), 12);
+	std::string equal = std::vector{10, 11, 12, 0, 0} == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "vector<int>(5): ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+}
+
+void Until_Container_test(){
+	std::cout << "\n[Container until test]" << std::endl;
+	{
+	std::vector<int> test = {10, 11, 12, 13};
+	std::vector<int> ret_test;
+	
+	file.write(test);
+	file.read_until(ret_test, 12);
+	std::string equal = std::vector<int>{10, 11, 12} == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "vector<int>: ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+	{
+	std::forward_list<int> test = {10, 11, 12, 13};
+	std::forward_list<int> ret_test;
+	
+	file.write(test);
+	file.read_until(ret_test, 12);
+	std::string equal = std::forward_list{12, 11, 10} == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "forward_list<int>: ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+}
+
+void Until_String_test(){
+	std::cout << "\n[String until test]" << std::endl;
+	{
+	std::string test = "string!";
+	std::string ret_test;
+	
+	file.write(test);
+	file.read_until(ret_test, 'r');
+	std::string equal = "str" == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "string: " << ret_test << std::endl;
+	file.cleanFile();
+	}
+	{
+	std::wstring test = L"wstring!";
+	std::wstring ret_test;
+	
+	file.write(test);
+	file.read_until(ret_test, 'r');
+	std::wstring equal = L"wstr" == ret_test ? L"[success] : " : L"[failure] : ";
+	std::wcout << equal << L"wstring: " << ret_test << std::endl;
+	file.cleanFile();
+	}
+	{
+	std::u16string test = u"u16string!";
+	std::u16string ret_test;
+	
+	file.write(test);
+	file.read_until(ret_test, 'r');
+	std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> cv;
+	std::string equal = u"u16str" == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << cv.to_bytes(u"u16string: ") << cv.to_bytes(ret_test) << std::endl;
+	file.cleanFile();
+	}
+	{
+	std::u32string test = U"u32string!";
+	std::u32string ret_test;
+	
+	file.write(test);
+	file.read_until(ret_test, 'r');
+	std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> cv;
+	std::string equal = U"u32str" == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << cv.to_bytes(U"u32string: ") << cv.to_bytes(ret_test) << std::endl;
+	file.cleanFile();
+	}
+}
+
+
 int main(){
 	SFINEA_test();
 
@@ -727,6 +936,12 @@ int main(){
 	Container_test();
 	String_test();
 	Stream_test();
+
+	Until_Pointer_arr_test();
+	Until_Array_test();
+	Until_Range_test();
+	Until_Container_test();
+	Until_String_test();
 
 	return 0;
 }
