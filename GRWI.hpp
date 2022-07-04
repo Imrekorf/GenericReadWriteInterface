@@ -632,7 +632,6 @@ private:
 		maxlength = maxlength ? maxlength : std::numeric_limits<std::size_t>::max();
 		std::size_t i = 0;
 		int status;
-		std::cout << "called: " << abi::__cxa_demangle(typeid(BT).name(), NULL, NULL, &status) << std::endl;
 		for(; i < maxlength; i++){
 			BT buffer; 
 			if(!read(buffer))
@@ -640,7 +639,6 @@ private:
 			if(!p(buffer)){
 				break;
 			}
-			std::cout << "buffer[" << abi::__cxa_demangle(typeid(BT).name(), NULL, NULL, &status) << "] " << buffer << std::endl;
 			if(buffer == terminator)
 				break;
 		}
