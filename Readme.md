@@ -37,10 +37,10 @@ std::size_t read (iIOable* buffer, const std::size_t size);
  *  SUPPORTS: Type: deferenced ptrType
  *  SUPPORTS: Type2: Any lvalue reference exluding pointers, containers, arrays, iterators and streams
 */
-std::size_t read (ptrType  buffer, const Type&    terminator, const std::size_t maxlength);
-std::size_t read (ptrType  buffer, const Type2&   terminator, const std::size_t maxlength);
-std::size_t read (iIOable* buffer, const Type&    terminator, const std::size_t maxlength);
-std::size_t read (iIOable* buffer, const iIOable& terminator, const std::size_t maxlength);
+std::size_t read_until(ptrType  buffer, const Type&    terminator, const std::size_t maxlength);
+std::size_t read_until(ptrType  buffer, const Type2&   terminator, const std::size_t maxlength);
+std::size_t read_until(iIOable* buffer, const Type&    terminator, const std::size_t maxlength);
+std::size_t read_until(iIOable* buffer, const iIOable& terminator, const std::size_t maxlength);
 ```
 
 #### Array
@@ -62,10 +62,10 @@ std::size_t	read (const Type   (&buffer)[size], const std::size_t elementsize);
 /** SUPPORTS: Type: Any array excluding pointer arrays, multidimensional arrays, containers and iterators
  *  SUPPORTS: Type2: Any lvalue excluding pointers, arrays, containers and iterators
 */
-std::size_t	read (const Type   (&buffer)[size], const Type&    terminator);
-std::size_t	read (const Type   (&buffer)[size], const Type2&   terminator);
-std::size_t	read (const iIOable(&buffer)[size], const Type2&   terminator);
-std::size_t	read (const iIOable(&buffer)[size], const iIOable& terminator);
+std::size_t	read_until(const Type   (&buffer)[size], const Type&    terminator);
+std::size_t	read_until(const Type   (&buffer)[size], const Type2&   terminator);
+std::size_t	read_until(const iIOable(&buffer)[size], const Type2&   terminator);
+std::size_t	read_until(const iIOable(&buffer)[size], const iIOable& terminator);
 ```
 
 ### Containers
@@ -83,9 +83,9 @@ Iter read (Iter first, Iter last);
 Iter read (Iter first, Iter last, std::function<iterType<Iter>(iterType<Iter> val)> m);
 Iter read (Iter first, Iter last, std::function<void(iterType<Iter> val, Iter& curr)> m);
 
-Iter read (Iter first, Iter last, const iterType<Iter>& terminator);
-Iter read (Iter first, Iter last, const iterType<Iter>& terminator, std::function<Iter(iterType<Iter> val)> m);
-Iter read (Iter first, Iter last, const iterType<Iter>& terminator, std::function<void(iterType<Iter> val, Iter& curr)> m);
+Iter read_until(Iter first, Iter last, const iterType<Iter>& terminator);
+Iter read_until(Iter first, Iter last, const iterType<Iter>& terminator, std::function<Iter(iterType<Iter> val)> m);
+Iter read_until(Iter first, Iter last, const iterType<Iter>& terminator, std::function<void(iterType<Iter> val, Iter& curr)> m);
 ```
 
 #### Full containers
@@ -103,9 +103,9 @@ std::size_t read (CT& Container, std::size_t maxlength = 0);
 std::size_t read (CT& Container, std::function<CTEL(BT& buf)> m, std::size_t maxlength = 0);
 std::size_t read (CT& Container, std::function<CTEL(CTEL& buf)> m, std::size_t maxlength = 0);
 
-std::size_t read (CT& Container, const CTEL& terminator, std::size_t maxlength = 0);
-std::size_t read (CT& Container, const BT&   terminator, std::function<CTEL(BT& buf)> m, std::size_t maxlength = 0);
-std::size_t read (CT& Container, const CTEL&  terminator, std::function<CTEL(CTEL& buf)> m, std::size_t maxlength = 0);
+std::size_t read_until(CT& Container, const CTEL& terminator, std::size_t maxlength = 0);
+std::size_t read_until(CT& Container, const BT&   terminator, std::function<CTEL(BT& buf)> m, std::size_t maxlength = 0);
+std::size_t read_until(CT& Container, const CTEL&  terminator, std::function<CTEL(CTEL& buf)> m, std::size_t maxlength = 0);
 
 /** SUPPORTS: Container: Any container 
  *  SUPPORTS: BT: any type thus far supported by read()
@@ -113,8 +113,9 @@ std::size_t read (CT& Container, const CTEL&  terminator, std::function<CTEL(CTE
 */
 std::size_t>::type	read(CT& Container, std::function<CTEL(CTEL& buf)> m, std::function<bool(CT& Container, CTEL& buffer)> insert, std::size_t maxlength = 0)
 std::size_t>::type	read(CT& Container, std::function<CTEL(CTEL& buf)> m, std::function<bool(CT& Container, CTEL& buffer)> insert, std::size_t maxlength = 0)
-std::size_t>::type	read(CT& Container, const BT& terminator, std::function<CTEL(CTEL& buf)> m, std::function<bool(CT& Container, CTEL& buffer)> insert, std::size_t maxlength = 0)
-std::size_t>::type	read(CT& Container, const CTEL& terminator, std::function<CTEL(CTEL& buf)> m, std::function<bool(CT& Container, CTEL& buffer)> insert, std::size_t maxlength = 0)
+
+std::size_t>::type	read_until(CT& Container, const BT& terminator, std::function<CTEL(CTEL& buf)> m, std::function<bool(CT& Container, CTEL& buffer)> insert, std::size_t maxlength = 0)
+std::size_t>::type	read_until(CT& Container, const CTEL& terminator, std::function<CTEL(CTEL& buf)> m, std::function<bool(CT& Container, CTEL& buffer)> insert, std::size_t maxlength = 0)
 ```
 
 #### Strings
@@ -127,7 +128,7 @@ std::size_t>::type	read(CT& Container, const CTEL& terminator, std::function<CTE
 std::size_t write(const Type&& _string);
 std::size_t write(const Type&  _string);
 
-std::size_t read (const Type& _string, const CTEL& terminator, std::size_t maxlength = 0);
+std::size_t read_until(const Type& _string, const CTEL& terminator, std::size_t maxlength = 0);
 // TODO: implment predicates and terminators
 ```
 
@@ -142,7 +143,7 @@ std::size_t write(IsT& stream);
 std::size_t write(IsT& stream, std::function<bool(IT& buffer)> predicate);
 
 std::size_t	read (OsT& stream, std::size_t maxlength = 0);
-std::size_t read (OsT& stream, const IT& terminator, std::size_t maxlength = 0);
+std::size_t read_until(OsT& stream, const IT& terminator, std::size_t maxlength = 0);
 // TODO: implement read with mutator
 ```
 

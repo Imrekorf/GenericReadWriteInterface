@@ -20,6 +20,9 @@
 #include <fstream>
 #include <sstream>
 
+#include <codecvt>
+#include <locale>
+
 namespace details {
 	template<template<class...>class Z, class, class...>
 	struct can_apply:std::false_type{};
@@ -55,6 +58,9 @@ struct test_struct {
 	test_struct(int a, int b, int c, int d) : a(a), b(b), c(c), d(d) {}
 	void print(){
 		std::cout << a << " " << b << " " << c << " " << d << " " << std::endl;
+	}
+	bool operator==(test_struct& other){
+		return (a == other.a && b == other.b && c == other.c && d == other.d);
 	}
 };
 
@@ -93,11 +99,39 @@ public:
 	void print(){
 		std::cout << a << " " << b << " " << c << " " << d << " " << std::endl;
 	}
+
+	bool operator==(test_iIOable& other){
+		return (a == other.a && b == other.b && c == other.c && d == other.d);
+	}
 };
 
 iFileIO file("test.txt");
 
 #define w(_w) std::setw(_w)
+
+template<typename T>
+void print_arr(T* start, std::size_t length){
+	for(std::size_t i = 0; i < length; i++)
+		std::cout << start[i] << ", ";
+	std::cout << std::endl;
+}
+
+void print_arr(test_struct* start, std::size_t length){
+	for(std::size_t i = 0; i < length; i++)
+		start[i].print();
+}
+
+void print_arr(test_iIOable* start, std::size_t length){
+	for(std::size_t i = 0; i < length; i++)
+		start[i].print();
+}
+
+template<typename T>
+void print_container(T start, T end){
+	for(; start != end; ++start)
+		std::cout << *start << ", ";
+	std::cout << std::endl;
+}
 
 void SFINEA_test(){
 	std::cout << std::left << "Rvalue SFINAE: " << std::endl;
@@ -329,107 +363,370 @@ void SFINEA_test(){
 }
 
 void RValue_test(){
-	std::cout << "rvalue int: ";
-	int ivalue = 0;
+	std::cout << "\n[rvalue test]" << std::endl;
+	{
+	int ret_test = 0;
 	file.write(10); // implicit cast to int
-	file.read(ivalue);
-	std::cout << ivalue << std::endl;
+	file.read(ret_test);
+	std::string equal = 10 == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "rvalue int: ";
+	std::cout << ret_test << std::endl;
 	file.cleanFile();
-
-	std::cout << "rvalue double: ";
-	double dvalue = 0;
+	}
+	{
+	double ret_test = 0;
 	file.write(10.5); // implicit cast to double
-	file.read(dvalue);
-	std::cout << dvalue << std::endl;
+	file.read(ret_test);
+	std::string equal = 10.5 == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "rvalue double: ";
+	std::cout << ret_test << std::endl;
 	file.cleanFile();
-
-	std::cout << "rvalue test_struct: ";
-	test_struct _test;
+	}
+	{
+	test_struct ret_test;
 	file.write(test_struct{25, 50, 75, 100});
-	file.read(_test);
-	_test.print();
+	file.read(ret_test);
+	std::string equal = test_struct{25, 50, 75, 100} == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "rvalue test_struct: ";
+	ret_test.print();
 	file.cleanFile();
-
-	std::cout << "rvalue ctest: ";
-	test_iIOable _ctest;
+	}
+	{
+	test_iIOable ret_test;
 	file.write(test_iIOable(25, 50, 75, 100));
-	file.read(_ctest);
-	_ctest.print();
+	file.read(ret_test);
+	std::string equal = test_iIOable(25, 50, 75, 100) == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "rvalue test_iIOable: ";
+	ret_test.print();
 	file.cleanFile();
+	}
 }
 
 void LValue_test(){
-	std::cout << "lvalue int: ";
-	int ivalue = 10;
-	int ivalue_ret = 0;
-	file.write(ivalue);
-	file.read(ivalue_ret);
-	std::cout << ivalue_ret << std::endl;
+	std::cout << "\n[lvalue test]" << std::endl;
+	{
+	int test = 10;
+	int ret_test = 0;
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "lvalue int: ";
+	std::cout << ret_test << std::endl;
 	file.cleanFile();
-
-	std::cout << "lvalue double: ";
-	double dvalue = 10.5;
-	double dvalue_ret = 0;
-	file.write(dvalue);
-	file.read(dvalue_ret);
-	std::cout << dvalue_ret << std::endl;
+	}
+	{
+	double test = 10.5;
+	double ret_test = 0;
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "lvalue double: ";
+	std::cout << ret_test << std::endl;
 	file.cleanFile();
-
-	std::cout << "lvalue test_struct: ";
-	test_struct _test = test_struct{25, 50, 75, 100};
-	test_struct _test_ret;
-	file.write(_test);
-	file.read(_test_ret);
-	_test_ret.print();
+	}
+	{
+	test_struct test = test_struct{25, 50, 75, 100};
+	test_struct ret_test;
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "lvalue test_struct: ";
+	ret_test.print();
 	file.cleanFile();
-
-	std::cout << "lvalue ctest: ";
-	test_iIOable _ctest = test_iIOable(25, 50, 75, 100);
-	test_iIOable _ctest_ret;
-	file.write(_ctest);
-	file.read(_ctest_ret);
-	_ctest_ret.print();
+	}
+	{
+	test_iIOable test = test_iIOable(25, 50, 75, 100);
+	test_iIOable ret_test;
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "lvalue test_iIOable: ";
+	ret_test.print();
 	file.cleanFile();
+	}
 }
 
 void Pointer_test(){
-	std::cout << "lvalue int: ";
-	int ivalue = 10;
-	int ivalue_ret = 0;
-	file.write(&ivalue, 1);
-	file.read(&ivalue_ret, 1);
-	std::cout << ivalue_ret << std::endl;
+	std::cout << "\n[Pointer test]" << std::endl;
+	{
+	int test = 10;
+	int ret_test = 0;
+	file.write(&test, 1);
+	file.read(&ret_test, 1);
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer int: ";
+	std::cout << ret_test << std::endl;
 	file.cleanFile();
+	}
+	{
+	double test = 10.5;
+	double ret_test = 0;
+	file.write(&test, 1);
+	file.read(&ret_test, 1);
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer double: ";
+	std::cout << ret_test << std::endl;
+	file.cleanFile();
+	}
+	{
+	test_struct test = test_struct{25, 50, 75, 100};
+	test_struct ret_test;
+	file.write(&test, 1);
+	file.read(&ret_test, 1);
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer test_struct: ";
+	ret_test.print();
+	file.cleanFile();
+	}
+	{
+	test_iIOable test = test_iIOable(25, 50, 75, 100);
+	test_iIOable ret_test;
+	file.write(&test, 1);
+	file.read(&ret_test, 1);
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer test_iIOable: ";
+	ret_test.print();
+	file.cleanFile();
+	}
+}
 
-	std::cout << "lvalue double: ";
-	double dvalue = 10.5;
-	double dvalue_ret = 0;
-	file.write(&dvalue, 1);
-	file.read(&dvalue_ret, 1);
-	std::cout << dvalue_ret << std::endl;
+void Pointer_arr_test(){
+	std::cout << "\n[Ptr Array test]" << std::endl;
+	{
+	int test[4] = {10, 11, 12, 13};
+	int ret_test[4];
+	file.write(test, 4);
+	file.read(ret_test, 4);
+	std::string equal = std::equal(std::begin(test), std::end(test), std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer array int: ";
+	print_arr(ret_test, 4);
 	file.cleanFile();
+	}
+	{
+	double test[4] = {10.5, 11.5, 12.5, 13.5};
+	double ret_test[4];
+	file.write(test, 4);
+	file.read(ret_test, 4);
+	std::string equal = std::equal(std::begin(test), std::end(test), std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer array double: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+	{
+	test_struct test[4] = {test_struct{25, 50, 75, 100}, test_struct{125, 150, 175, 200}, test_struct{225, 250, 275, 300}, test_struct{325, 350, 375, 400}};
+	test_struct ret_test[4];
+	file.write(test, 4);
+	file.read(ret_test, 4);
+	std::string equal = std::equal(std::begin(test), std::end(test), std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer array test_struct: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+	{
+	test_iIOable test[4] = {test_iIOable(25, 50, 75, 100), test_iIOable(125, 150, 175, 200), test_iIOable(225, 250, 275, 300), test_iIOable(325, 350, 375, 400)};
+	test_iIOable ret_test[4];
+	file.write(test, 4);
+	file.read(ret_test, 4);
+	std::string equal = std::equal(std::begin(test), std::end(test), std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "pointer array test_iIOable: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+}
 
-	std::cout << "lvalue test_struct: ";
-	test_struct _test = test_struct{25, 50, 75, 100};
-	test_struct _test_ret;
-	file.write(&_test, 1);
-	file.read(&_test_ret, 1);
-	_test_ret.print();
+void Array_test(){
+	std::cout << "\n[Array test]" << std::endl;
+	{
+	int test[4] = {10, 11, 12, 13};
+	int ret_test[4];
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = std::equal(std::begin(test), std::end(test), std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "array int: ";
+	print_arr(ret_test, 4);
 	file.cleanFile();
+	}
+	{
+	double test[4] = {10.5, 11.5, 12.5, 13.5};
+	double ret_test[4];
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = std::equal(std::begin(test), std::end(test), std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "array double: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+	{
+	test_struct test[4] = {test_struct{25, 50, 75, 100}, test_struct{125, 150, 175, 200}, test_struct{225, 250, 275, 300}, test_struct{325, 350, 375, 400}};
+	test_struct ret_test[4];
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = std::equal(std::begin(test), std::end(test), std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "array test_struct: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+	{
+	test_iIOable test[4] = {test_iIOable(25, 50, 75, 100), test_iIOable(125, 150, 175, 200), test_iIOable(225, 250, 275, 300), test_iIOable(325, 350, 375, 400)};
+	test_iIOable ret_test[4];
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = std::equal(std::begin(test), std::end(test), std::begin(ret_test)) ? "[success] : " : "[failure] : ";
+	std::cout << equal << "array test_iIOable: ";
+	print_arr(ret_test, 4);
+	file.cleanFile();
+	}
+}
 
-	std::cout << "lvalue test_iIOable: ";
-	test_iIOable _ctest = test_iIOable(25, 50, 75, 100);
-	test_iIOable _ctest_ret;
-	file.write(_ctest);
-	file.read(_ctest_ret);
-	_ctest_ret.print();
+void Range_test(){
+	std::cout << "\n[Range test]" << std::endl;
+	{
+	std::vector<int> test = {10, 11, 12, 13};
+	std::vector<int> ret_test(4, 0);
+	
+	file.write(test.begin(), test.end());
+	file.read(ret_test.begin(), ret_test.end());
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "vector<int>: ";
+	print_container(ret_test.begin(), ret_test.end());
 	file.cleanFile();
+	}
+	{
+	std::forward_list<int> test = {10, 11, 12, 13};
+	std::forward_list<int> ret_test(4, 0);
+	
+	file.write(test.begin(), test.end());
+	file.read(ret_test.begin(), ret_test.end());
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "forward_list<int>: ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+	{
+	std::vector<int> test = {10, 11, 12, 13};
+	std::vector<int> ret_test(2, 0);
+	
+	file.write(test.begin(), test.end());
+	file.read(ret_test.begin(), ret_test.end());
+	std::string equal = std::vector{10, 11} == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "vector<int>(2): ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+	{
+	std::vector<int> test = {10, 11, 12, 13};
+	std::vector<int> ret_test(5, 0);
+	
+	file.write(test.begin(), test.end());
+	file.read(ret_test.begin(), ret_test.end());
+	std::string equal = std::vector{10, 11, 12, 13, 0} == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "vector<int>(5): ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+}
+
+void Container_test(){
+	std::cout << "\n[Container test]" << std::endl;
+	{
+	std::vector<int> test = {10, 11, 12, 13};
+	std::vector<int> ret_test;
+	
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "vector<int>: ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+	{
+	std::forward_list<int> test = {10, 11, 12, 13};
+	std::forward_list<int> ret_test;
+	
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = std::forward_list{13, 12, 11, 10} == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "forward_list<int>: ";
+	print_container(ret_test.begin(), ret_test.end());
+	file.cleanFile();
+	}
+}
+
+void String_test(){
+	std::cout << "\n[String test]" << std::endl;
+	{
+	std::string test = "string!";
+	std::string ret_test;
+	
+	file.write(test);
+	file.read(ret_test);
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << "string: " << ret_test << std::endl;
+	file.cleanFile();
+	}
+	{
+	std::wstring test = L"wstring!";
+	std::wstring ret_test;
+	
+	file.write(test);
+	file.read(ret_test);
+	std::wstring equal = test == ret_test ? L"[success] : " : L"[failure] : ";
+	std::wcout << equal << L"wstring: " << ret_test << std::endl;
+	file.cleanFile();
+	}
+	{
+	std::u16string test = u"u16string!";
+	std::u16string ret_test;
+	
+	file.write(test);
+	file.read(ret_test);
+	std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> cv;
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << cv.to_bytes(u"u16string: ") << cv.to_bytes(ret_test) << std::endl;
+	file.cleanFile();
+	}
+	{
+	std::u32string test = U"u32string!";
+	std::u32string ret_test;
+	
+	file.write(test);
+	file.read(ret_test);
+	std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> cv;
+	std::string equal = test == ret_test ? "[success] : " : "[failure] : ";
+	std::cout << equal << cv.to_bytes(U"u32string: ") << cv.to_bytes(ret_test) << std::endl;
+	file.cleanFile();
+	}
+}
+
+void Stream_test(){
+	std::cout << "\n[Stream test]" << std::endl;
+	{
+		std::stringstream out;
+		std::stringstream in;
+		out << "hello world!";
+
+		file.write(out, " ");
+		std::cout << "start read!" << std::endl;
+		file.read(in);
+		// std::cout << out.str() << std::endl;
+		std::string equal = out.str() == in.str() ? "[success] : " : "[failure] : ";
+		std::cout << equal << "stringstream: " << in.str() << std::endl;
+		file.cleanFile();
+	}
 }
 
 int main(){
-
 	SFINEA_test();
 
+	RValue_test();
+	LValue_test();
+	Pointer_test();
+	Pointer_arr_test();
+	Array_test();
+	Range_test();
+	Container_test();
+	String_test();
+	Stream_test();
 
 	return 0;
 }
