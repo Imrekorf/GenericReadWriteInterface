@@ -631,7 +631,6 @@ private:
 	std::size_t read_into_T_until(predicate p, const BT& terminator, std::size_t maxlength = 0){
 		maxlength = maxlength ? maxlength : std::numeric_limits<std::size_t>::max();
 		std::size_t i = 0;
-		int status;
 		for(; i < maxlength; i++){
 			BT buffer; 
 			if(!read(buffer))
